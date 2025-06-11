@@ -3,7 +3,7 @@ const bodyParser = require("body-parser");
 const { execFile } = require("child_process");
 const cliPath = path.join(__dirname, "ALParserCLI.exe");
 
-execFile(cliPath, [`--query=${question}`, `--path=./al-files`], ...);
+execFile(cliPath, [`--query=${question}`, `--path=./al-source`], ...);
 
 const app = express();
 app.use(bodyParser.json());
