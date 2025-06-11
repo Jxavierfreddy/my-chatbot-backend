@@ -1,34 +1,39 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const path = require("path");
 const { execFile } = require("child_process");
-const cliPath = path.join(__dirname, "ALParserCLI.exe");
-
-execFile(cliPath, [`--query=${question}`, `--path=./al-source`], ...);
 
 const app = express();
 app.use(bodyParser.json());
 
+// Adjust paths
+const cliPath = path.join(__dirname, "ALParserCLI.exe");
+const alSourcePath = path.join(__dirname, "../alsource");
+
 app.post("/ask", (req, res) => {
   const question = req.body.question;
 
-  execFile("dotnet", [
-    "run",
-    "--project",
-    "../ALObjectParser/ALParserCLI",  // Adjust if different path
-    `--query=${question}`,
-    `--path=../ALObjectParser/test-al-files` // Folder with .al files
-  ], (error, stdout, stderr) => {
+  execFile(cliPath, [`--query=${question}`, `--path=${alSourcePath}`], (error, stdout, stderr) => {
     if (error) {
-      console.error("Parser error:", error);
-      return res.status(500).send({ error: "Parser failed." });
+      console.error("❌ Parser execution error:", error);
+      return res.status(500).json({ error: "Parser execution failed." });
     }
 
     try {
       const parsed = JSON.parse(stdout);
-      const reply = parsed.map(o => `🔹 ${o.Type} ${o.Name}\n${o.Procedures.map(p => `  • ${p.Name}: ${p.Documentation}`).join("\n")}`).join("\n\n");
-      res.send({ answer: reply || "No matches found." });
+
+      // Format the reply
+      const reply = parsed.map(obj =>
+        `🔹 ${obj.Type} ${obj.Name}\n` +
+        (obj.Procedures || []).map(p => `  • ${p.Name}: ${p.Documentation || 'No docs.'}`).join("\n")
+      ).join("\n\n");
+
+      res.json({ answer: reply || "No matches found." });
+
     } catch (e) {
-      res.status(500).send({ error: "Invalid parser output." });
+      console.error("❌ JSON parsing error:", e);
+      console.error("Output was:", stdout);
+      res.status(500).json({ error: "Invalid parser output." });
     }
   });
 });
